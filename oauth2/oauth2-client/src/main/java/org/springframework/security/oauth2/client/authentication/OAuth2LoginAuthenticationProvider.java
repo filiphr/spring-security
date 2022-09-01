@@ -32,6 +32,7 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.authority.mapper.OAuth2GrantedAuthoritiesProvider;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.util.Assert;
 
@@ -70,7 +71,7 @@ public class OAuth2LoginAuthenticationProvider implements AuthenticationProvider
 
 	private final OAuth2UserService<OAuth2UserRequest, OAuth2User> userService;
 
-	private GrantedAuthoritiesMapper authoritiesMapper = ((authorities) -> authorities);
+	private OAuth2GrantedAuthoritiesProvider authoritiesMapper = ((oAuth2User) -> oAuth2User.getAuthorities());
 
 	/**
 	 * Constructs an {@code OAuth2LoginAuthenticationProvider} using the provided
@@ -117,7 +118,7 @@ public class OAuth2LoginAuthenticationProvider implements AuthenticationProvider
 		OAuth2User oauth2User = this.userService.loadUser(new OAuth2UserRequest(
 				loginAuthenticationToken.getClientRegistration(), accessToken, additionalParameters));
 		Collection<? extends GrantedAuthority> mappedAuthorities = this.authoritiesMapper
-				.mapAuthorities(oauth2User.getAuthorities());
+				.extractAuthorities(oauth2User);
 		OAuth2LoginAuthenticationToken authenticationResult = new OAuth2LoginAuthenticationToken(
 				loginAuthenticationToken.getClientRegistration(), loginAuthenticationToken.getAuthorizationExchange(),
 				oauth2User, mappedAuthorities, accessToken, authorizationCodeAuthenticationToken.getRefreshToken());
@@ -133,6 +134,11 @@ public class OAuth2LoginAuthenticationProvider implements AuthenticationProvider
 	 * user's authorities
 	 */
 	public final void setAuthoritiesMapper(GrantedAuthoritiesMapper authoritiesMapper) {
+		Assert.notNull(authoritiesMapper, "authoritiesMapper cannot be null");
+		this.authoritiesMapper = oAuth2User -> authoritiesMapper.mapAuthorities(oAuth2User.getAuthorities());
+	}
+
+	public final void setAuthoritiesMapper(OAuth2GrantedAuthoritiesProvider authoritiesMapper) {
 		Assert.notNull(authoritiesMapper, "authoritiesMapper cannot be null");
 		this.authoritiesMapper = authoritiesMapper;
 	}
